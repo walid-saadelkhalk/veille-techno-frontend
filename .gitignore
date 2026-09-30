@@ -1,0 +1,56 @@
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# Dependencies and build output
+node_modules
+dist
+dist-ssr
+coverage
+*.local
+*.tsbuildinfo
+
+# Environment
+.env
+.env.*
+!.env.example
+
+# Editor and OS
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# AI tooling
+/.claude/
+/.agents/
+/.windsurf/
+CLAUDE.md
+
+# Markdown: everything is ignored except the README.
+#
+# The "!docs/**" exception was deliberately removed on 2026-09-30, so that the
+# editor greys out the files in docs/ as it usually does.
+#
+# Consequence, verified with "git check-ignore -v": the whole docs/ folder is
+# ignored. This is the exact configuration that kept docs/ out of the backend
+# repository, where it was an unnoticed bug. Here it is a deliberate choice,
+# but the outcome is identical if it is forgotten.
+#
+# UNCOMMENT THE LINE BELOW BEFORE COMMITTING docs/. Checked at FRONT-24.
+*.md
+!README.md
+# !docs/**
+
+# Precaution: any local backup of this file stays out of the repository.
+.gitignore.backup
