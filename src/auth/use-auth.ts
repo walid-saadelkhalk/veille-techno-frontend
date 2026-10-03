@@ -16,8 +16,8 @@
 
 import { useCallback, useEffect, useState } from 'react';
 
-import { ApiError } from '../api/http-client.ts';
 import type { AuthApi } from '../api/auth-api.ts';
+import { messageOf } from '../api/error-message.ts';
 import type { AuthEvents } from './auth-events.ts';
 import type { TokenStorage } from './token-storage.ts';
 
@@ -39,16 +39,6 @@ export interface Auth {
 
 const STORAGE_REFUSED =
   "Connexion impossible : ce navigateur refuse d'enregistrer la session.";
-
-const UNEXPECTED = 'Une erreur inattendue est survenue.';
-
-/** What to show the user, from whatever was thrown. */
-function messageOf(caught: unknown): string {
-  // ApiError already carries what the server said, normalised into a list by
-  // the HTTP client. Anything else is a bug on our side, and showing its raw
-  // text would leak internals into the interface.
-  return caught instanceof ApiError ? (caught.messages[0] ?? UNEXPECTED) : UNEXPECTED;
-}
 
 export function useAuth({ tokens, authApi, events }: UseAuthDeps): Auth {
   // The function form runs once, at mount. Holding a token is treated as
