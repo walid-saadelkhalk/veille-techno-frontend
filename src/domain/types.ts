@@ -14,8 +14,10 @@
 // resources (ADR-007), and that bet held.
 //
 // Scope note: these types are erased at compile time. They constrain our own
-// code, they validate nothing at runtime. Checking what the API actually sends
-// is the job of the mapping in src/api/dto.ts.
+// code, they validate nothing at runtime. The mapping in src/api/dto.ts picks
+// the fields one by one, so nothing the API adds can leak in here, but it does
+// not check their types either. See ADR-020 for why, and for what it would
+// take to add.
 
 /** A task. Lives in exactly one list, named by listId. */
 export type Card = {
@@ -60,3 +62,18 @@ export type Board = {
  * Loading, empty and error are three distinct states, see FRONT-10 and FRONT-11.
  */
 export const emptyBoard: Board = { lists: [], cards: [] };
+
+/**
+ * The fields of a card a user may change.
+ *
+ * Optional means "leave this one alone", so updating the title never clears
+ * the description. An empty string is a real value, not an absence: it is how
+ * a description gets emptied.
+ *
+ * No listId: moving a card belonged to the cut scope, and adding the field
+ * now would be speculative.
+ */
+export type CardPatch = {
+  readonly title?: string;
+  readonly description?: string;
+};
