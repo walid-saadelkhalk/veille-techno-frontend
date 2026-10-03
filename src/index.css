@@ -1,4 +1,46 @@
-/* Base styles only. The real styling is lot 6, ticket FRONT-18. */
+/* The whole stylesheet of the project, and there is no second one.
+ *
+ * NO UI LIBRARY. Tailwind and MUI would be dependencies to justify, and
+ * nothing justifies them on a board this size: 7 components, about fifteen
+ * distinct elements, one developer, and a codebase that is closing rather
+ * than growing. Measured on 2026-10-03: Tailwind plus its Vite plugin would
+ * add 14 packages to a 100 package dev tree. It would add NO production
+ * dependency, since it compiles to CSS, and saying otherwise would be false.
+ *
+ * NO WEB FONT, and this one is not a matter of taste. Point B5 of
+ * docs/SECURITE.md states that index.html loads NO remote resource, and that
+ * is the central argument of ADR-016 for keeping the token in localStorage:
+ * the XSS surface is limited to our own code. One line of Google Fonts would
+ * make that sentence false and it would have to leave the README. So: system
+ * font stack, which costs nothing and stays true.
+ *
+ * STYLED BY SEMANTIC SELECTORS. The markup is already semantic because the
+ * tests demanded it: sections named by aria-label, a real heading hierarchy,
+ * article for a card, label tied to its field, role alert and role status on
+ * messages. So the stylesheet targets that directly and invents exactly ONE
+ * class name, .columns, for the single element that has no semantics.
+ *
+ * OUT OF SCOPE, as the ticket says: no deep responsive, no animation, no
+ * dark theme. The horizontal scroll of the columns covers the small screen
+ * case well enough.
+ */
+
+:root {
+  --surface: #f4f5f7;
+  --surface-sunken: #ebecf0;
+  --surface-raised: #ffffff;
+  --border: #d8dbe0;
+  --text: #1f2328;
+  --text-muted: #5c636a;
+  --accent: #2b6cb0;
+  --danger: #b42318;
+  --danger-surface: #fdf3f2;
+  --radius: 6px;
+
+  font-family: system-ui, sans-serif;
+  line-height: 1.5;
+  color: var(--text);
+}
 
 *,
 *::before,
@@ -6,12 +48,249 @@
   box-sizing: border-box;
 }
 
-:root {
-  font-family: system-ui, sans-serif;
-  line-height: 1.5;
-}
-
 body {
   margin: 0;
   min-height: 100vh;
+  background: var(--surface);
+}
+
+/* Keyboard users get a visible focus ring. focus-visible rather than focus,
+   so a mouse click does not leave one behind. */
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* ---------- The shell ---------- */
+
+main > header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.75rem 1.25rem;
+  background: var(--surface-raised);
+  border-bottom: 1px solid var(--border);
+}
+
+main > header h1 {
+  margin: 0;
+  font-size: 1.25rem;
+}
+
+/* ---------- Forms, shared by login, the two additions and the editor ---------- */
+
+form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+form p {
+  margin: 0;
+}
+
+label {
+  display: block;
+  font-size: 0.8125rem;
+  color: var(--text-muted);
+  margin-bottom: 0.25rem;
+}
+
+input,
+textarea {
+  width: 100%;
+  padding: 0.4rem 0.5rem;
+  font: inherit;
+  color: inherit;
+  background: var(--surface-raised);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+textarea {
+  min-height: 4.5rem;
+  resize: vertical;
+}
+
+button {
+  align-self: flex-start;
+  padding: 0.4rem 0.75rem;
+  font: inherit;
+  color: var(--text);
+  background: var(--surface-raised);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  cursor: pointer;
+}
+
+button:hover:not(:disabled) {
+  background: var(--surface-sunken);
+}
+
+/* The disabled state has to be READABLE, since it is how the interface
+   refuses a blank title and a double submission. */
+button:disabled {
+  color: var(--text-muted);
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+/* The login screen is the only centred, narrow thing in the application. */
+form[aria-label='Connexion'] {
+  max-width: 22rem;
+  margin: 3rem auto;
+  padding: 1.5rem;
+  background: var(--surface-raised);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+form[aria-label='Connexion'] h2 {
+  margin: 0 0 0.5rem;
+  font-size: 1.125rem;
+}
+
+/* ---------- Messages, and the three states they must not be confused with ---------- */
+
+/* An error: a coloured left border, impossible to mistake for a quiet
+   message. Criterion of FRONT-18. */
+[role='alert'] {
+  margin: 0;
+  padding: 0.5rem 0.75rem;
+  color: var(--danger);
+  background: var(--danger-surface);
+  border-left: 3px solid var(--danger);
+  border-radius: 0 var(--radius) var(--radius) 0;
+}
+
+/* In progress: muted and italic. Covers both "Connexion en cours" and
+   "Chargement du tableau". */
+[role='status'] {
+  margin: 0;
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+/* ---------- The board ---------- */
+
+section[aria-label='Tableau'] {
+  padding: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+section[aria-label='Tableau'] > h2 {
+  margin: 0;
+  font-size: 1rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+/* The empty state: a plain paragraph, so muted but WITHOUT the border of an
+   error and WITHOUT the italics of a loading state. Three distinct looks. */
+section[aria-label='Tableau'] > p:not([role]) {
+  margin: 0;
+  color: var(--text-muted);
+}
+
+/* The only class of the project. overflow-x is what makes columns that do
+   not fit stay reachable instead of being squashed. */
+.columns {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  overflow-x: auto;
+  padding-bottom: 0.5rem;
+}
+
+/* A column is a section inside the board section, so it needs no class. */
+section[aria-label='Tableau'] section {
+  flex: 0 0 17rem;
+  padding: 0.75rem;
+  background: var(--surface-sunken);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+section[aria-label='Tableau'] section > h3 {
+  margin: 0;
+  font-size: 0.9375rem;
+  /* The API imposes no maximum length, so a very long title is a real case
+     and it must wrap instead of widening the column. */
+  overflow-wrap: break-word;
+}
+
+section[aria-label='Tableau'] section > p {
+  margin: 0;
+  font-size: 0.875rem;
+  color: var(--text-muted);
+}
+
+section[aria-label='Tableau'] ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+/* ---------- A card ---------- */
+
+/* ---------- A card ---------- */
+
+/* flex-wrap with full width text, so the two buttons end up SIDE BY SIDE on
+   the last line without a wrapper element and without a second class name.
+   The alternative was a div around the buttons, which would have needed a
+   class of its own since a row of actions has no semantic element. */
+article {
+  padding: 0.5rem 0.625rem;
+  background: var(--surface-raised);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: 0 1px 1px rgb(9 30 66 / 8%);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.375rem;
+}
+
+/* CHILD selectors, not descendant ones, and the difference is not cosmetic:
+   `article p` also reaches the two paragraphs INSIDE the editor form. That
+   form is a COLUMN flex container, where flex-basis applies to the height,
+   so each paragraph claimed the full height of the form and flex-shrink: 0
+   forbade it to shrink. The content overflowed the card and covered the add
+   form below it. A descendant selector crosses component boundaries. */
+article > h4,
+article > p,
+article > form {
+  flex: 0 0 100%;
+}
+
+article > h4 {
+  margin: 0;
+  font-size: 0.9375rem;
+  overflow-wrap: break-word;
+}
+
+/* pre-wrap keeps the line breaks a user typed, which is why the description
+   is never trimmed when the patch is built. */
+article > p {
+  margin: 0;
+  font-size: 0.875rem;
+  color: var(--text-muted);
+  white-space: pre-wrap;
+  overflow-wrap: break-word;
+}
+
+/* The card's own two buttons, not the editor's, which keep the normal size. */
+article > button {
+  align-self: auto;
+  padding: 0.2rem 0.45rem;
+  font-size: 0.8125rem;
 }

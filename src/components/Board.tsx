@@ -35,7 +35,10 @@ export function Board({
   let content: React.ReactElement;
 
   if (view.status === 'loading') {
-    content = <p>Chargement du tableau...</p>;
+    // role status, so a screen reader announces it AND so the stylesheet can
+    // tell it apart from the empty state, which is a plain paragraph. Three
+    // distinguishable treatments, zero invented class names.
+    content = <p role="status">Chargement du tableau...</p>;
   } else if (view.status === 'error') {
     content = (
       <>
@@ -79,7 +82,9 @@ export function Board({
         {lists.length === 0 ? (
           <p>Aucune colonne pour l'instant. Ajoutez-en une pour commencer.</p>
         ) : (
-          <div>
+          // The ONLY class name in the project: this div has no semantics of
+          // its own, and selecting it with "> div" would be fragile and mute.
+          <div className="columns">
             {lists.map((list) => (
               <Column
                 key={list.id}
