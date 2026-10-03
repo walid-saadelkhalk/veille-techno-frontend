@@ -15,6 +15,16 @@
 
 import type { Card, List } from '../domain/types.ts';
 
+/**
+ * What POST /api/auth/login answers.
+ *
+ * No conversion function below: the domain does not know about tokens, so
+ * there is nothing to convert it into. auth-api.ts reads the one field.
+ */
+export type AuthTokenDto = {
+  accessToken: string;
+};
+
 /** The shape of a list as the API returns it, extra fields included. */
 export type ListDto = {
   id: string;

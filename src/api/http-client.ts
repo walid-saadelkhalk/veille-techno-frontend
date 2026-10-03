@@ -93,6 +93,11 @@ async function messagesOf(response: Response): Promise<readonly string[]> {
 export function createHttpClient(
   baseUrl: string,
   getToken: () => string | null,
+  // Called when, and only when, the server answers 401. The client REPORTS a
+  // dead session, it does not decide what one means: purging the token and
+  // telling React belong to the auth module. Optional, so every existing
+  // test and caller keeps working without it.
+  onUnauthorized?: () => void,
 ): HttpClient {
   async function request<T>(
     method: string,
@@ -130,7 +135,16 @@ export function createHttpClient(
     // Here is the line the whole file is about: without it, every error
     // status would flow on as a success.
     if (!response.ok) {
-      throw new ApiError(kindOf(response.status), await messagesOf(response));
+      const kind = kindOf(response.status);
+
+      // Only on a 401. A 403 means the resource is not yours, NOT that your
+      // session is dead, and confusing the two would log the user out on
+      // every unlucky click. See ADR-017.
+      if (kind === 'unauthorized') {
+        onUnauthorized?.();
+      }
+
+      throw new ApiError(kind, await messagesOf(response));
     }
 
     if (response.status === 204) {

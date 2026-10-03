@@ -272,3 +272,63 @@ describe('securite du message d\'erreur', () => {
     );
   });
 });
+
+// Added by FRONT-31. The purge on a 401 has to happen on ANY 401, and this
+// client is the single place every request goes through. Handling it per
+// caller would make a forgotten call a silent security hole.
+//
+// The client does NOT decide what a dead session means: it only reports one.
+// Clearing the token and telling React are the composition root's business.
+describe('le rappel sur 401', () => {
+  it('previent une seule fois quand le serveur repond 401', async () => {
+    const onUnauthorized = vi.fn();
+    fetchMock.mockResolvedValue(jsonResponse(401, { message: 'Unauthorized' }));
+
+    await captureError(() =>
+      createHttpClient(BASE_URL, () => 'jeton-perime', onUnauthorized).get(
+        '/lists',
+      ),
+    );
+
+    expect(onUnauthorized).toHaveBeenCalledTimes(1);
+  });
+
+  it('leve quand meme apres avoir prevenu', async () => {
+    // Reporting must not swallow: the caller still has to know its request
+    // failed, or it would carry on with no data and no error.
+    const onUnauthorized = vi.fn();
+    fetchMock.mockResolvedValue(jsonResponse(401, { message: 'Unauthorized' }));
+
+    const error = await captureError(() =>
+      createHttpClient(BASE_URL, () => 'jeton-perime', onUnauthorized).get(
+        '/lists',
+      ),
+    );
+
+    expect(error.kind).toBe('unauthorized');
+  });
+
+  it('ne previent PAS quand le serveur repond 403', async () => {
+    // The distinction that matters, see ADR-017: a 403 means the resource is
+    // not yours, not that your session is dead. Confusing the two would log
+    // the user out on every unlucky click.
+    const onUnauthorized = vi.fn();
+    fetchMock.mockResolvedValue(jsonResponse(403, { message: 'Forbidden' }));
+
+    await captureError(() =>
+      createHttpClient(BASE_URL, () => 'jeton-valide', onUnauthorized).get(
+        '/lists/autrui',
+      ),
+    );
+
+    expect(onUnauthorized).not.toHaveBeenCalled();
+  });
+
+  it('fonctionne sans rappel, qui reste optionnel', async () => {
+    fetchMock.mockResolvedValue(jsonResponse(401, { message: 'Unauthorized' }));
+
+    const error = await captureError(() => clientWith('jeton').get('/lists'));
+
+    expect(error.kind).toBe('unauthorized');
+  });
+});

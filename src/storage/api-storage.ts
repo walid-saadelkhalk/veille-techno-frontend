@@ -1,7 +1,8 @@
 // The production adapter: the API behind the BoardStorage interface.
 //
-// THE ONLY FILE THAT KNOWS THE ROUTES. A path written anywhere else is a
-// defect. This, with memory-storage.ts beside it, is the whole answer to
+// THE ONLY FILE THAT KNOWS THE BOARD ROUTES. A path written anywhere else is
+// a defect, the one exception being auth-api.ts, which owns the single
+// authentication route: one file per area, and no component knows any. This, with memory-storage.ts beside it, is the whole answer to
 // "how many files would you touch to swap the data source": the hook that
 // uses them cannot tell which one it was handed.
 //
