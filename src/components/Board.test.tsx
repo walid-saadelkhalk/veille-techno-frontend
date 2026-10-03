@@ -11,7 +11,14 @@
 // card 1 before card 0, so that a missing sort fails instead of passing by
 // luck on data that happened to arrive sorted.
 
-import { cleanup, render, screen, waitFor, within } from '@testing-library/react';
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { ApiError } from '../api/http-client.ts';
@@ -170,5 +177,91 @@ describe("l'ecran d'erreur", () => {
     screen.getByRole('button', { name: /réessayer/i }).click();
 
     await waitFor(() => expect(load).toHaveBeenCalledTimes(2));
+  });
+});
+
+// Added at pass B, FRONT-12 and FRONT-13. These mount the WHOLE tree on the
+// in memory adapter, so they exercise Board, Column, Card, TitleForm and the
+// real useBoard together, with no server. An addition that reached the wrong
+// column, or a board that showed a card the storage never accepted, would
+// fail here and nowhere else.
+
+/** Waits for the seeded board to be on screen before acting on it. */
+async function mountSeeded(storage: BoardStorage): Promise<void> {
+  render(<Board storage={storage} />);
+  await waitFor(() => expect(columnTitles()).toHaveLength(2));
+}
+
+describe('ajouter une colonne', () => {
+  it('fait apparaitre la colonne rendue par le serveur', async () => {
+    await mountSeeded(createMemoryStorage(seeded));
+
+    fireEvent.change(screen.getByLabelText(/nouvelle colonne/i), {
+      target: { value: 'Termine' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: /ajouter la colonne/i }));
+
+    await waitFor(() => expect(columnTitles()).toContain('Termine'));
+  });
+
+  it("informe et n'ajoute rien quand l'ajout echoue", async () => {
+    // "Ce qui s'affiche est ce qui est enregistre": no optimistic update, so
+    // a refused addition must leave the board exactly as it was.
+    await mountSeeded({
+      ...createMemoryStorage(seeded),
+      addList: () =>
+        Promise.reject(new ApiError('network', ['Le serveur est injoignable.'])),
+    });
+
+    fireEvent.change(screen.getByLabelText(/nouvelle colonne/i), {
+      target: { value: 'Termine' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: /ajouter la colonne/i }));
+
+    await waitFor(() =>
+      expect(screen.getByRole('alert').textContent).toContain(
+        'Le serveur est injoignable.',
+      ),
+    );
+    expect(columnTitles()).toEqual(['A faire', 'En cours']);
+  });
+});
+
+describe('ajouter une tache', () => {
+  it('ajoute la carte dans la colonne visee, et nulle part ailleurs', async () => {
+    // The assertion that matters is the second one: the parent column
+    // travels in the URL, so a wrong listId would land the card in another
+    // column, and a global query would never notice.
+    await mountSeeded(createMemoryStorage(seeded));
+    const target = screen.getByRole('region', { name: 'En cours' });
+
+    fireEvent.change(within(target).getByLabelText(/nouvelle tâche/i), {
+      target: { value: 'Relire' },
+    });
+    fireEvent.click(
+      within(target).getByRole('button', { name: /ajouter la tâche/i }),
+    );
+
+    await waitFor(() =>
+      expect(within(target).getByText('Relire')).toBeTruthy(),
+    );
+    const other = screen.getByRole('region', { name: 'A faire' });
+    expect(within(other).queryByText('Relire')).toBeNull();
+  });
+
+  it('fait disparaitre l\'etat vide de la colonne', async () => {
+    await mountSeeded(createMemoryStorage(seeded));
+    const target = screen.getByRole('region', { name: 'En cours' });
+
+    fireEvent.change(within(target).getByLabelText(/nouvelle tâche/i), {
+      target: { value: 'Relire' },
+    });
+    fireEvent.click(
+      within(target).getByRole('button', { name: /ajouter la tâche/i }),
+    );
+
+    await waitFor(() =>
+      expect(within(target).queryByText(/aucune tâche/i)).toBeNull(),
+    );
   });
 });

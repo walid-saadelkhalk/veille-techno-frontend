@@ -19,6 +19,7 @@ import { cardsOfList, sortedLists } from '../domain/operations.ts';
 import { useBoard } from '../hooks/use-board.ts';
 import type { BoardStorage } from '../storage/storage.ts';
 import { Column } from './Column.tsx';
+import { TitleForm } from './TitleForm.tsx';
 
 export function Board({
   storage,
@@ -66,6 +67,15 @@ export function Board({
         {/* An action that failed: the board stays, the message is added. */}
         {view.error !== null && <p role="alert">{view.error}</p>}
 
+        {/* view.addList is passed BY REFERENCE, which works because the hook
+            returns closures and has no `this`. */}
+        <TitleForm
+          label="Nouvelle colonne"
+          submitLabel="Ajouter la colonne"
+          pending={view.pending}
+          onSubmit={view.addList}
+        />
+
         {lists.length === 0 ? (
           <p>Aucune colonne pour l'instant. Ajoutez-en une pour commencer.</p>
         ) : (
@@ -75,6 +85,10 @@ export function Board({
                 key={list.id}
                 list={list}
                 cards={cardsOfList(view.board, list.id)}
+                pending={view.pending}
+                // Bound here, so the parent column of a new card is read in
+                // one place only.
+                onAddCard={(title) => view.addCard(list.id, title)}
               />
             ))}
           </div>

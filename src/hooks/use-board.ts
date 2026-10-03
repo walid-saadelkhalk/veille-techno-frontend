@@ -34,10 +34,13 @@ export interface BoardView {
   pending: boolean;
   error: string | null;
   reload(): void;
-  addList(title: string): Promise<void>;
-  addCard(listId: string, title: string): Promise<void>;
-  updateCard(id: string, patch: CardPatch): Promise<void>;
-  deleteCard(id: string): Promise<void>;
+  // Each one reports whether the object was REALLY created or changed, so a
+  // form can clear its field on success and keep what was typed on failure.
+  // A local refusal answers false too: nothing was created either way.
+  addList(title: string): Promise<boolean>;
+  addCard(listId: string, title: string): Promise<boolean>;
+  updateCard(id: string, patch: CardPatch): Promise<boolean>;
+  deleteCard(id: string): Promise<boolean>;
 }
 
 export function useBoard(storage: BoardStorage): BoardView {
@@ -98,37 +101,41 @@ export function useBoard(storage: BoardStorage): BoardView {
    * function unaware of what they do.
    */
   const run = useCallback(
-    async (operate: () => Promise<BoardAction>): Promise<void> => {
+    async (operate: () => Promise<BoardAction>): Promise<boolean> => {
       // With a network round trip, a double click is easy to trigger, where
       // it was invisible with a local storage. Limit to name: two clicks in
       // the SAME event tick would both read pending as false. A real user
       // cannot, since two events mean two renders, and lot 5 disables the
       // buttons anyway.
       if (state.pending) {
-        return;
+        return false;
       }
 
       dispatch({ type: 'actionStarted' });
 
       try {
         dispatch(await operate());
+
+        return true;
       } catch (caught) {
         dispatch({ type: 'actionFailed', message: messageOf(caught) });
+
+        return false;
       }
     },
     [state.pending],
   );
 
   const addList = useCallback(
-    async (title: string): Promise<void> => {
+    async (title: string): Promise<boolean> => {
       // Not a duplicate of a server rule, see ADR-017: a blank title has no
       // chance of being accepted, so the round trip is not worth making.
       // isBlankTitle comes from src/domain, written at lot 1.
       if (isBlankTitle(title)) {
-        return;
+        return false;
       }
 
-      await run(async () => ({
+      return run(async () => ({
         type: 'listAdded',
         list: await storage.addList(title.trim()),
       }));
@@ -137,12 +144,12 @@ export function useBoard(storage: BoardStorage): BoardView {
   );
 
   const addCard = useCallback(
-    async (listId: string, title: string): Promise<void> => {
+    async (listId: string, title: string): Promise<boolean> => {
       if (isBlankTitle(title)) {
-        return;
+        return false;
       }
 
-      await run(async () => ({
+      return run(async () => ({
         type: 'cardSaved',
         card: await storage.addCard(listId, title.trim()),
       }));
@@ -151,14 +158,14 @@ export function useBoard(storage: BoardStorage): BoardView {
   );
 
   const updateCard = useCallback(
-    async (id: string, patch: CardPatch): Promise<void> => {
+    async (id: string, patch: CardPatch): Promise<boolean> => {
       // An absent title means "leave it alone", which is allowed. A title
       // present but blank would empty it, which is not.
       if (patch.title !== undefined && isBlankTitle(patch.title)) {
-        return;
+        return false;
       }
 
-      await run(async () => ({
+      return run(async () => ({
         type: 'cardSaved',
         card: await storage.updateCard(id, patch),
       }));
@@ -167,8 +174,8 @@ export function useBoard(storage: BoardStorage): BoardView {
   );
 
   const deleteCard = useCallback(
-    async (id: string): Promise<void> => {
-      await run(async () => {
+    async (id: string): Promise<boolean> => {
+      return run(async () => {
         await storage.deleteCard(id);
 
         return { type: 'cardDeleted', cardId: id };

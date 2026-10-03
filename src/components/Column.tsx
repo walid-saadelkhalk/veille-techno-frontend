@@ -10,13 +10,22 @@
 
 import type { Card as CardData, List } from '../domain/types.ts';
 import { Card } from './Card.tsx';
+import { TitleForm } from './TitleForm.tsx';
 
 export function Column({
   list,
   cards,
+  pending,
+  onAddCard,
 }: {
   list: List;
   cards: readonly CardData[];
+  pending: boolean;
+  /**
+   * Already bound to this column by Board, so the identifier is sourced in
+   * ONE place. A column that had to pass its own id could pass another's.
+   */
+  onAddCard: (title: string) => Promise<boolean>;
 }): React.ReactElement {
   return (
     // aria-label makes this a named region, so assistive technology and the
@@ -44,6 +53,13 @@ export function Column({
           ))}
         </ul>
       )}
+
+      <TitleForm
+        label="Nouvelle tâche"
+        submitLabel="Ajouter la tâche"
+        pending={pending}
+        onSubmit={onAddCard}
+      />
     </section>
   );
 }

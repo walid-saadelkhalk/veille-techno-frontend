@@ -179,3 +179,45 @@ describe('une action qui echoue', () => {
     expect(result.current.status).toBe('ready');
   });
 });
+
+// Added at pass B of lot 5. The four methods now report whether they
+// succeeded, so TitleForm can clear its field on success and KEEP what the
+// user typed on failure. Four lines in the hook, and the ten tests above
+// were unaffected, which is what makes the change safe to make on a closed
+// ticket.
+describe('le resultat rendu par les actions', () => {
+  it('rend true quand l\'action aboutit', async () => {
+    const { result } = await mountReady(createMemoryStorage(seeded));
+    let outcome: unknown;
+
+    await act(async () => {
+      outcome = await result.current.addList('En cours');
+    });
+
+    expect(outcome).toBe(true);
+  });
+
+  it('rend false quand le serveur refuse', async () => {
+    const { result } = await mountReady(createMemoryStorage(seeded));
+    let outcome: unknown;
+
+    await act(async () => {
+      outcome = await result.current.deleteCard('carte-qui-n-existe-pas');
+    });
+
+    expect(outcome).toBe(false);
+  });
+
+  it('rend false quand le titre est refuse avant le reseau', async () => {
+    // Nothing was created, so the form must keep the text. A blank title and
+    // a server refusal are two failures, and they deserve the same answer.
+    const { result } = await mountReady(createMemoryStorage(seeded));
+    let outcome: unknown;
+
+    await act(async () => {
+      outcome = await result.current.addList('   ');
+    });
+
+    expect(outcome).toBe(false);
+  });
+});
