@@ -56,11 +56,11 @@ describe('la soumission', () => {
     const auth = fakeAuth();
     render(<LoginForm auth={auth} />);
 
-    fill('user1@example.com', 'un-mot-de-passe');
+    fill('utilisateur@exemple.test', 'un-mot-de-passe');
     submit();
 
     expect(auth.signIn).toHaveBeenCalledWith(
-      'user1@example.com',
+      'utilisateur@exemple.test',
       'un-mot-de-passe',
     );
   });
@@ -106,7 +106,7 @@ describe('la soumission', () => {
     const auth = fakeAuth({ pending: true });
     render(<LoginForm auth={auth} />);
 
-    fill('user1@example.com', 'un-mot-de-passe');
+    fill('utilisateur@exemple.test', 'un-mot-de-passe');
     submit();
 
     expect(auth.signIn).not.toHaveBeenCalled();

@@ -88,10 +88,10 @@ describe('la connexion', () => {
     const { result } = mount(tokens, login);
 
     await act(async () => {
-      await result.current.signIn('user1@example.com', 'un-mot-de-passe');
+      await result.current.signIn('utilisateur@exemple.test', 'un-mot-de-passe');
     });
 
-    expect(login).toHaveBeenCalledWith('user1@example.com', 'un-mot-de-passe');
+    expect(login).toHaveBeenCalledWith('utilisateur@exemple.test', 'un-mot-de-passe');
     expect(tokens.value).toBe('jeton.frais');
     expect(result.current.status).toBe('authenticated');
   });
@@ -104,7 +104,7 @@ describe('la connexion', () => {
     const { result } = mount(tokens, login);
 
     await act(async () => {
-      await result.current.signIn('user1@example.com', 'faux');
+      await result.current.signIn('utilisateur@exemple.test', 'faux');
     });
 
     expect(result.current.error).toBe('Identifiants invalides.');
@@ -120,7 +120,7 @@ describe('la connexion', () => {
     const { result } = mount(tokens, vi.fn().mockResolvedValue('jeton.frais'));
 
     await act(async () => {
-      await result.current.signIn('user1@example.com', 'un-mot-de-passe');
+      await result.current.signIn('utilisateur@exemple.test', 'un-mot-de-passe');
     });
 
     expect(result.current.status).toBe('anonymous');
@@ -141,7 +141,7 @@ describe('la connexion', () => {
     const { result } = mount(fakeTokens(null), login);
 
     act(() => {
-      void result.current.signIn('user1@example.com', 'un-mot-de-passe');
+      void result.current.signIn('utilisateur@exemple.test', 'un-mot-de-passe');
     });
     expect(result.current.pending).toBe(true);
 
@@ -159,10 +159,10 @@ describe('la connexion', () => {
     const { result } = mount(fakeTokens(null), login);
 
     await act(async () => {
-      await result.current.signIn('user1@example.com', 'faux');
+      await result.current.signIn('utilisateur@exemple.test', 'faux');
     });
     await act(async () => {
-      await result.current.signIn('user1@example.com', 'un-mot-de-passe');
+      await result.current.signIn('utilisateur@exemple.test', 'un-mot-de-passe');
     });
 
     expect(result.current.error).toBeNull();

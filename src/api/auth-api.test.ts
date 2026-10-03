@@ -23,10 +23,10 @@ describe('createAuthApi.login', () => {
     const post = vi.fn().mockResolvedValue({ accessToken: 'un.jeton' });
     const api = createAuthApi(clientWith(post));
 
-    await api.login('user1@example.com', 'un-mot-de-passe');
+    await api.login('utilisateur@exemple.test', 'un-mot-de-passe');
 
     expect(post).toHaveBeenCalledWith('/auth/login', {
-      email: 'user1@example.com',
+      email: 'utilisateur@exemple.test',
       password: 'un-mot-de-passe',
     });
   });
@@ -36,7 +36,7 @@ describe('createAuthApi.login', () => {
       clientWith(vi.fn().mockResolvedValue({ accessToken: 'un.jeton' })),
     );
 
-    await expect(api.login('user1@example.com', 'un-mot-de-passe')).resolves.toBe(
+    await expect(api.login('utilisateur@exemple.test', 'un-mot-de-passe')).resolves.toBe(
       'un.jeton',
     );
   });
@@ -47,6 +47,6 @@ describe('createAuthApi.login', () => {
     const refused = new ApiError('unauthorized', ['Identifiants invalides.']);
     const api = createAuthApi(clientWith(vi.fn().mockRejectedValue(refused)));
 
-    await expect(api.login('user1@example.com', 'faux')).rejects.toBe(refused);
+    await expect(api.login('utilisateur@exemple.test', 'faux')).rejects.toBe(refused);
   });
 });
