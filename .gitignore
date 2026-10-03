@@ -44,8 +44,11 @@ CLAUDE.md
 #
 # Consequence, verified with "git check-ignore -v": the whole docs/ folder is
 # ignored. This is the exact configuration that kept docs/ out of the backend
-# repository, where it was an unnoticed bug. Here it is a deliberate choice,
-# but the outcome is identical if it is forgotten.
+# repository for a while. Correction of 2026-10-03, after checking: those
+# files did eventually land there, force added, and "git ls-tree origin/main"
+# shows all 18 of them. So the trap is real but it was caught. Here the
+# exclusion is a deliberate choice, and the outcome is only identical if it is
+# forgotten.
 #
 # UNCOMMENT THE LINE BELOW BEFORE COMMITTING docs/. Checked at FRONT-24.
 *.md
