@@ -16,6 +16,7 @@ import {
   withCard,
   withList,
   withoutCard,
+  withoutList,
 } from './operations.ts';
 import { emptyBoard, type Board, type Card, type List } from './types.ts';
 
@@ -284,5 +285,58 @@ describe('isBlankTitle', () => {
 
   it('refuse tabulations et sauts de ligne', () => {
     expect(isBlankTitle('\t\n ')).toBe(true);
+  });
+});
+
+// Added at FRONT-37. Deleting a column deletes its cards, and that rule is
+// enforced BY THE DATABASE: Card.list carries onDelete: Cascade. The server
+// answers 204 without saying what it took with it, so the client has to
+// mirror the cascade or it would keep orphan cards in memory.
+//
+// This is the ONLY place in the project where a database rule is reproduced
+// on the client. It is not duplicated business logic, it is the consequence
+// of a deletion whose answer carries no body.
+describe('withoutList', () => {
+  const populated = makeBoard(
+    [todo, doing],
+    [
+      makeCard('card-1', 'list-1', 0),
+      makeCard('card-2', 'list-2', 1),
+      makeCard('card-3', 'list-1', 2),
+    ],
+  );
+
+  it('retire la colonne', () => {
+    const next = withoutList(populated, 'list-1');
+
+    expect(next.lists.map((entry) => entry.id)).toEqual(['list-2']);
+  });
+
+  it('retire AUSSI toutes les cartes de cette colonne', () => {
+    const next = withoutList(populated, 'list-1');
+
+    expect(next.cards.map((entry) => entry.id)).toEqual(['card-2']);
+  });
+
+  it('ne touche pas aux cartes des autres colonnes', () => {
+    const next = withoutList(populated, 'list-2');
+
+    expect(next.cards.map((entry) => entry.id)).toEqual(['card-1', 'card-3']);
+  });
+
+  it('ne fait rien sur un identifiant inconnu, et ne leve pas', () => {
+    // Same tolerance as withoutCard: the caller gets here after a 204, so
+    // the deletion succeeded. Raising would turn a success into an error.
+    const next = withoutList(populated, 'colonne-inconnue');
+
+    expect(next.lists).toHaveLength(2);
+    expect(next.cards).toHaveLength(3);
+  });
+
+  it("laisse le tableau d'origine intact", () => {
+    withoutList(populated, 'list-1');
+
+    expect(populated.lists).toHaveLength(2);
+    expect(populated.cards).toHaveLength(3);
   });
 });

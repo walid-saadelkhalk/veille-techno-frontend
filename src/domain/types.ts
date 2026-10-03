@@ -70,10 +70,22 @@ export const emptyBoard: Board = { lists: [], cards: [] };
  * the description. An empty string is a real value, not an absence: it is how
  * a description gets emptied.
  *
- * No listId: moving a card belonged to the cut scope, and adding the field
- * now would be speculative.
+ * listId was added at FRONT-38: moving a card is a PATCH like any other,
+ * and the flat shape of ADR-007 means the state has nothing to reorganise.
  */
 export type CardPatch = {
   readonly title?: string;
   readonly description?: string;
+  readonly listId?: string;
+};
+
+/**
+ * The fields of a column a user may change.
+ *
+ * Symmetric with CardPatch, and for the same reason: an absent field means
+ * "leave this one alone". Only the title is changeable, since identifier and
+ * position belong to the server (ADR-011).
+ */
+export type ListPatch = {
+  readonly title?: string;
 };

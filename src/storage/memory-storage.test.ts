@@ -193,3 +193,124 @@ describe('isolation de l\'etat interne', () => {
     expect(first.lists).not.toBe(second.lists);
   });
 });
+
+// Added at FRONT-37. The double has to cascade exactly as the database does,
+// otherwise a hook test would pass on behaviour the real adapter does not
+// have. Card.list carries onDelete: Cascade, so deleting a column deletes
+// its cards, and the API answers 204 without saying so.
+describe('renommer et supprimer une colonne', () => {
+  async function populated(): Promise<BoardStorage> {
+    const store = createMemoryStorage();
+    const first = await store.addList('A faire');
+    const second = await store.addList('En cours');
+    await store.addCard(first.id, 'Carte de la premiere');
+    await store.addCard(second.id, 'Carte de la seconde');
+
+    return store;
+  }
+
+  it('updateList remplace le titre et rend la colonne a jour', async () => {
+    const store = await populated();
+    const { lists } = await store.load();
+
+    const updated = await store.updateList(lists[0]!.id, {
+      title: 'Titre corrige',
+    });
+
+    expect(updated.title).toBe('Titre corrige');
+    expect((await store.load()).lists[0]?.title).toBe('Titre corrige');
+  });
+
+  it('updateList garde la position et l\'identifiant', async () => {
+    const store = await populated();
+    const { lists } = await store.load();
+
+    const updated = await store.updateList(lists[0]!.id, { title: 'Autre' });
+
+    expect(updated.id).toBe(lists[0]!.id);
+    expect(updated.position).toBe(lists[0]!.position);
+  });
+
+  it('updateList leve notFound sur une colonne inconnue, comme un 404', async () => {
+    const store = await populated();
+
+    await expect(
+      store.updateList('colonne-inconnue', { title: 'x' }),
+    ).rejects.toBeInstanceOf(ApiError);
+  });
+
+  it('deleteList retire la colonne ET ses cartes, comme la cascade', async () => {
+    const store = await populated();
+    const { lists } = await store.load();
+
+    await store.deleteList(lists[0]!.id);
+
+    const after = await store.load();
+    expect(after.lists).toHaveLength(1);
+    expect(after.cards).toHaveLength(1);
+    expect(after.cards[0]?.listId).toBe(lists[1]!.id);
+  });
+
+  it('deleteList leve notFound sur une colonne inconnue', async () => {
+    const store = await populated();
+
+    await expect(store.deleteList('colonne-inconnue')).rejects.toBeInstanceOf(
+      ApiError,
+    );
+  });
+});
+
+// Added at FRONT-38. The server places a moved card at the end of its new
+// column, so the double must too. A double that left the position alone
+// would let a display test pass on an order the real adapter never produces.
+describe('deplacer une carte entre colonnes', () => {
+  it('change la colonne de la carte', async () => {
+    const store = createMemoryStorage();
+    const from = await store.addList('A faire');
+    const to = await store.addList('En cours');
+    const card = await store.addCard(from.id, 'Une tache');
+
+    const moved = await store.updateCard(card.id, { listId: to.id });
+
+    expect(moved.listId).toBe(to.id);
+  });
+
+  it('la place en FIN de colonne d\'arrivee', async () => {
+    const store = createMemoryStorage();
+    const from = await store.addList('A faire');
+    const to = await store.addList('En cours');
+    await store.addCard(to.id, 'Deja la');
+    const card = await store.addCard(from.id, 'Celle qui bouge');
+
+    const moved = await store.updateCard(card.id, { listId: to.id });
+
+    const { cards } = await store.load();
+    const inTarget = cards.filter((entry) => entry.listId === to.id);
+    expect(Math.max(...inTarget.map((entry) => entry.position))).toBe(
+      moved.position,
+    );
+  });
+
+  it('garde le titre et la description pendant le deplacement', async () => {
+    const store = createMemoryStorage();
+    const from = await store.addList('A faire');
+    const to = await store.addList('En cours');
+    const card = await store.addCard(from.id, 'Une tache');
+    await store.updateCard(card.id, { description: 'Un texte' });
+
+    const moved = await store.updateCard(card.id, { listId: to.id });
+
+    expect(moved.title).toBe('Une tache');
+    expect(moved.description).toBe('Un texte');
+  });
+
+  it('leve notFound quand la colonne cible n\'existe pas', async () => {
+    const store = createMemoryStorage();
+    const from = await store.addList('A faire');
+    const card = await store.addCard(from.id, 'Une tache');
+
+    await expect(
+      store.updateCard(card.id, { listId: 'colonne-inconnue' }),
+    ).rejects.toBeInstanceOf(ApiError);
+  });
+});

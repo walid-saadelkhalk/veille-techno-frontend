@@ -113,3 +113,25 @@ export function cardsOfList(board: Board, listId: string): readonly Card[] {
 export function isBlankTitle(title: string): boolean {
   return title.trim().length === 0;
 }
+
+/**
+ * Removes the column AND every card it held.
+ *
+ * THE ONLY PLACE IN THE PROJECT WHERE A DATABASE RULE IS MIRRORED ON THE
+ * CLIENT. Card.list carries onDelete: Cascade, so deleting a column deletes
+ * its cards, and DELETE /lists/:id answers 204 without saying what it took
+ * with it. Removing only the column would leave orphan cards in the state.
+ *
+ * It is not duplicated business logic: it is the consequence of a deletion
+ * whose answer carries no body. Composing withoutCard in a loop would have
+ * worked and read worse.
+ *
+ * An unknown id changes nothing and does not raise, like withoutCard: the
+ * caller gets here after a 204, so the deletion succeeded.
+ */
+export function withoutList(board: Board, listId: string): Board {
+  return {
+    lists: board.lists.filter((list) => list.id !== listId),
+    cards: board.cards.filter((card) => card.listId !== listId),
+  };
+}

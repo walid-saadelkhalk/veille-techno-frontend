@@ -19,7 +19,7 @@ import { useCallback, useEffect, useReducer, useState } from 'react';
 
 import { messageOf } from '../api/error-message.ts';
 import { isBlankTitle } from '../domain/operations.ts';
-import type { Board, CardPatch } from '../domain/types.ts';
+import type { Board, CardPatch, ListPatch } from '../domain/types.ts';
 import type { BoardStorage } from '../storage/storage.ts';
 import {
   boardReducer,
@@ -41,6 +41,8 @@ export interface BoardView {
   addCard(listId: string, title: string): Promise<boolean>;
   updateCard(id: string, patch: CardPatch): Promise<boolean>;
   deleteCard(id: string): Promise<boolean>;
+  updateList(id: string, patch: ListPatch): Promise<boolean>;
+  deleteList(id: string): Promise<boolean>;
 }
 
 export function useBoard(storage: BoardStorage): BoardView {
@@ -136,7 +138,7 @@ export function useBoard(storage: BoardStorage): BoardView {
       }
 
       return run(async () => ({
-        type: 'listAdded',
+        type: 'listSaved',
         list: await storage.addList(title.trim()),
       }));
     },
@@ -184,6 +186,30 @@ export function useBoard(storage: BoardStorage): BoardView {
     [run, storage],
   );
 
+  const updateList = useCallback(
+    async (id: string, patch: ListPatch): Promise<boolean> => {
+      if (patch.title !== undefined && isBlankTitle(patch.title)) {
+        return false;
+      }
+
+      return run(async () => ({
+        type: 'listSaved',
+        list: await storage.updateList(id, patch),
+      }));
+    },
+    [run, storage],
+  );
+
+  const deleteList = useCallback(
+    async (id: string): Promise<boolean> =>
+      run(async () => {
+        await storage.deleteList(id);
+
+        return { type: 'listDeleted', listId: id };
+      }),
+    [run, storage],
+  );
+
   const reload = useCallback((): void => {
     setReloads((count) => count + 1);
   }, []);
@@ -198,5 +224,7 @@ export function useBoard(storage: BoardStorage): BoardView {
     addCard,
     updateCard,
     deleteCard,
+    updateList,
+    deleteList,
   };
 }

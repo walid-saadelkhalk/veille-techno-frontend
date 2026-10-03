@@ -12,7 +12,13 @@
 // is what lets an in memory object implement it, which is what makes the
 // claim demonstrable rather than merely stated.
 
-import type { Board, Card, CardPatch, List } from '../domain/types.ts';
+import type {
+  Board,
+  Card,
+  CardPatch,
+  List,
+  ListPatch,
+} from '../domain/types.ts';
 
 export interface BoardStorage {
   /** The whole board, as the data source currently holds it. */
@@ -28,4 +34,17 @@ export interface BoardStorage {
   updateCard(id: string, patch: CardPatch): Promise<Card>;
 
   deleteCard(id: string): Promise<void>;
+
+  /** Returns the column as it stands after the change. */
+  updateList(id: string, patch: ListPatch): Promise<List>;
+
+  /**
+   * Deletes the column AND its cards.
+   *
+   * The cascade is enforced by the database, Card.list carrying
+   * onDelete: Cascade, and the server answers 204 without saying what it
+   * took with it. Callers must mirror that, which is why the domain gained
+   * withoutList rather than reusing withoutCard in a loop.
+   */
+  deleteList(id: string): Promise<void>;
 }

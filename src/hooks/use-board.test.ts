@@ -221,3 +221,56 @@ describe('le resultat rendu par les actions', () => {
     expect(outcome).toBe(false);
   });
 });
+
+// Added at FRONT-37.
+describe('renommer et supprimer une colonne', () => {
+  it('renomme la colonne et rend true', async () => {
+    const { result } = await mountReady(createMemoryStorage(seeded));
+    let outcome: unknown;
+
+    await act(async () => {
+      outcome = await result.current.updateList('seed-list-1', {
+        title: 'Titre corrige',
+      });
+    });
+
+    expect(outcome).toBe(true);
+    expect(result.current.board.lists[0]?.title).toBe('Titre corrige');
+  });
+
+  it("refuse un titre blanc sans appeler le stockage", async () => {
+    const storage = createMemoryStorage(seeded);
+    const updateList = vi.spyOn(storage, 'updateList');
+    const { result } = await mountReady(storage);
+    let outcome: unknown;
+
+    await act(async () => {
+      outcome = await result.current.updateList('seed-list-1', { title: '   ' });
+    });
+
+    expect(updateList).not.toHaveBeenCalled();
+    expect(outcome).toBe(false);
+  });
+
+  it('supprime la colonne ET ses cartes', async () => {
+    const { result } = await mountReady(createMemoryStorage(seeded));
+
+    await act(async () => {
+      await result.current.deleteList('seed-list-1');
+    });
+
+    expect(result.current.board.lists).toHaveLength(0);
+    expect(result.current.board.cards).toHaveLength(0);
+  });
+
+  it('laisse le tableau intact quand la suppression echoue', async () => {
+    const { result } = await mountReady(createMemoryStorage(seeded));
+
+    await act(async () => {
+      await result.current.deleteList('colonne-qui-n-existe-pas');
+    });
+
+    expect(result.current.board.lists).toHaveLength(1);
+    expect(result.current.error).not.toBeNull();
+  });
+});

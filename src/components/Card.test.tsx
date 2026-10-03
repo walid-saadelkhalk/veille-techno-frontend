@@ -17,7 +17,7 @@ import {
 } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import type { Card as CardData } from '../domain/types.ts';
+import type { Card as CardData, List } from '../domain/types.ts';
 import { Card } from './Card.tsx';
 
 afterEach(cleanup);
@@ -30,12 +30,24 @@ const card: CardData = {
   listId: 'list-1',
 };
 
+/** Added at FRONT-38: the editor needs the columns to move between. */
+const lists: readonly List[] = [
+  { id: 'list-1', title: 'A faire', position: 0 },
+  { id: 'list-2', title: 'En cours', position: 1 },
+];
+
 function mount({ saveSucceeds = true } = {}) {
   const onUpdate = vi.fn().mockResolvedValue(saveSucceeds);
   const onDelete = vi.fn().mockResolvedValue(true);
 
   render(
-    <Card card={card} pending={false} onUpdate={onUpdate} onDelete={onDelete} />,
+    <Card
+      card={card}
+      lists={lists}
+      pending={false}
+      onUpdate={onUpdate}
+      onDelete={onDelete}
+    />,
   );
 
   return { onUpdate, onDelete };

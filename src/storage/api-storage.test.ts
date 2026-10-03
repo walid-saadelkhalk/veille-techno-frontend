@@ -296,3 +296,52 @@ describe('erreurs', () => {
     await expect(storage().load()).rejects.toBeInstanceOf(ApiError);
   });
 });
+
+// Added at FRONT-37.
+describe('updateList', () => {
+  it('envoie le patch a PATCH /lists/:id et rend la colonne du serveur', async () => {
+    client.patch.mockResolvedValue({ ...listDto, title: 'Titre corrige' });
+
+    const list = await storage().updateList('list-1', { title: 'Titre corrige' });
+
+    expect(client.patch).toHaveBeenCalledWith('/lists/list-1', {
+      title: 'Titre corrige',
+    });
+    expect(list.title).toBe('Titre corrige');
+  });
+
+  it('ne laisse pas passer ownerId ni createdAt dans le domaine', async () => {
+    client.patch.mockResolvedValue({ ...listDto, title: 'Titre corrige' });
+
+    const list = await storage().updateList('list-1', { title: 'Titre corrige' });
+
+    expect(Object.keys(list).sort()).toEqual(['id', 'position', 'title']);
+  });
+
+  it("laisse passer l'erreur du client sans la transformer", async () => {
+    const refused = new ApiError('forbidden', [
+      'Cette liste appartient a un autre utilisateur.',
+    ]);
+    client.patch.mockRejectedValue(refused);
+
+    await expect(storage().updateList('list-1', { title: 'x' })).rejects.toBe(
+      refused,
+    );
+  });
+});
+
+describe('deleteList', () => {
+  it('appelle DELETE /lists/:id', async () => {
+    client.delete.mockResolvedValue(undefined);
+
+    await storage().deleteList('list-1');
+
+    expect(client.delete).toHaveBeenCalledWith('/lists/list-1');
+  });
+
+  it("ne rend rien, le serveur repondant 204 sans corps", async () => {
+    client.delete.mockResolvedValue(undefined);
+
+    await expect(storage().deleteList('list-1')).resolves.toBeUndefined();
+  });
+});

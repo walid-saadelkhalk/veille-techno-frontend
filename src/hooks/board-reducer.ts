@@ -21,7 +21,12 @@
 // 'ready with an empty board' are two distinct values, so nothing can say
 // "aucune colonne" while the request is still running.
 
-import { withCard, withList, withoutCard } from '../domain/operations.ts';
+import {
+  withCard,
+  withList,
+  withoutCard,
+  withoutList,
+} from '../domain/operations.ts';
 import { emptyBoard } from '../domain/types.ts';
 import type { Board, Card, List } from '../domain/types.ts';
 
@@ -44,7 +49,8 @@ export type BoardAction =
   | { type: 'actionFailed'; message: string }
   // The three mutations carry the entity THE SERVER returned, never one the
   // client made up: identifiers and positions belong to the server, ADR-011.
-  | { type: 'listAdded'; list: List }
+  | { type: 'listSaved'; list: List }
+  | { type: 'listDeleted'; listId: string }
   | { type: 'cardSaved'; card: Card }
   | { type: 'cardDeleted'; cardId: string };
 
@@ -88,7 +94,7 @@ export function boardReducer(
       // rebuilt, reordered or half applied.
       return { ...state, pending: false, error: action.message };
 
-    case 'listAdded':
+    case 'listSaved':
       return settled(state, withList(state.board, action.list));
 
     // One case for an addition AND a modification, because withCard is an
@@ -99,5 +105,9 @@ export function boardReducer(
 
     case 'cardDeleted':
       return settled(state, withoutCard(state.board, action.cardId));
+
+    // Removes the column AND its cards, mirroring the database cascade.
+    case 'listDeleted':
+      return settled(state, withoutList(state.board, action.listId));
   }
 }

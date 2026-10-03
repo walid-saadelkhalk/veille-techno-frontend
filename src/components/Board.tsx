@@ -90,12 +90,15 @@ export function Board({
                 key={list.id}
                 list={list}
                 cards={cardsOfList(view.board, list.id)}
+                lists={lists}
                 pending={view.pending}
                 // Bound here, so the parent column of a new card is read in
                 // one place only.
                 onAddCard={(title) => view.addCard(list.id, title)}
                 onUpdateCard={view.updateCard}
                 onDeleteCard={view.deleteCard}
+                onUpdateList={(patch) => view.updateList(list.id, patch)}
+                onDeleteList={() => view.deleteList(list.id)}
               />
             ))}
           </div>

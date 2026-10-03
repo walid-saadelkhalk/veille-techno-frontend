@@ -12,32 +12,37 @@
 import { useId, useState } from 'react';
 
 import { isBlankTitle } from '../domain/operations.ts';
-import type { Card as CardData, CardPatch } from '../domain/types.ts';
+import type { Card as CardData, CardPatch, List } from '../domain/types.ts';
 
 export function CardEditor({
   card,
+  lists,
   pending,
   onSave,
   onCancel,
 }: {
   card: CardData;
+  /** Every column, so the card can be moved. Added at FRONT-38. */
+  lists: readonly List[];
   pending: boolean;
   onSave: (patch: CardPatch) => Promise<boolean>;
   onCancel: () => void;
 }): React.ReactElement {
   const [title, setTitle] = useState(card.title);
   const [description, setDescription] = useState(card.description);
+  const [listId, setListId] = useState(card.listId);
 
-  // Two ids, because several editors can be open at once and each label must
-  // point at its own field.
+  // One id per field, because several editors can be open at once and each
+  // label must point at its own.
   const titleId = useId();
   const descriptionId = useId();
+  const listIdId = useId();
 
   const blank = isBlankTitle(title);
 
   /** Only what actually changed, so the rest is left alone by the server. */
   function patchOf(): CardPatch {
-    const patch: { title?: string; description?: string } = {};
+    const patch: { title?: string; description?: string; listId?: string } = {};
     const trimmedTitle = title.trim();
 
     if (trimmedTitle !== card.title) {
@@ -48,6 +53,13 @@ export function CardEditor({
     // content there, where a trailing space in a title is a typo.
     if (description !== card.description) {
       patch.description = description;
+    }
+
+    // Moving is a field like the others: it only travels when it changed.
+    // Sending the current column would be a write for nothing, and the back
+    // does not treat it as a move either.
+    if (listId !== card.listId) {
+      patch.listId = listId;
     }
 
     return patch;
@@ -97,6 +109,21 @@ export function CardEditor({
           value={description}
           onChange={(event) => setDescription(event.target.value)}
         />
+      </p>
+
+      <p>
+        <label htmlFor={listIdId}>Colonne</label>
+        <select
+          id={listIdId}
+          value={listId}
+          onChange={(event) => setListId(event.target.value)}
+        >
+          {lists.map((list) => (
+            <option key={list.id} value={list.id}>
+              {list.title}
+            </option>
+          ))}
+        </select>
       </p>
 
       <button type="submit" disabled={pending || blank}>

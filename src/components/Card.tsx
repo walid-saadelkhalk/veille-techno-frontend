@@ -12,16 +12,19 @@
 
 import { useState } from 'react';
 
-import type { Card as CardData, CardPatch } from '../domain/types.ts';
+import type { Card as CardData, CardPatch, List } from '../domain/types.ts';
 import { CardEditor } from './CardEditor.tsx';
 
 export function Card({
   card,
+  lists,
   pending,
   onUpdate,
   onDelete,
 }: {
   card: CardData;
+  /** Passed through to the editor, for the move. */
+  lists: readonly List[];
   pending: boolean;
   onUpdate: (patch: CardPatch) => Promise<boolean>;
   onDelete: () => Promise<boolean>;
@@ -47,6 +50,7 @@ export function Card({
       {editing ? (
         <CardEditor
           card={card}
+          lists={lists}
           pending={pending}
           onSave={handleSave}
           onCancel={() => setEditing(false)}

@@ -12,7 +12,13 @@
 
 import { toCard, toList, type CardDto, type ListDto } from '../api/dto.ts';
 import type { HttpClient } from '../api/http-client.ts';
-import type { Board, Card, CardPatch, List } from '../domain/types.ts';
+import type {
+  Board,
+  Card,
+  CardPatch,
+  List,
+  ListPatch,
+} from '../domain/types.ts';
 import type { BoardStorage } from './storage.ts';
 
 export function createApiStorage(client: HttpClient): BoardStorage {
@@ -72,6 +78,19 @@ export function createApiStorage(client: HttpClient): BoardStorage {
 
     async deleteCard(id: string): Promise<void> {
       await client.delete(`/cards/${id}`);
+    },
+
+    /** The patch travels as it comes, like updateCard's. */
+    async updateList(id: string, patch: ListPatch): Promise<List> {
+      return toList(await client.patch<ListDto>(`/lists/${id}`, patch));
+    },
+
+    /**
+     * The server answers 204 and takes the cards with it, the cascade being
+     * enforced by the database. Nothing comes back to map.
+     */
+    async deleteList(id: string): Promise<void> {
+      await client.delete(`/lists/${id}`);
     },
   };
 }

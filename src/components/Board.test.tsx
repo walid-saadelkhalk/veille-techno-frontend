@@ -393,3 +393,123 @@ describe('modifier une tache depuis le tableau', () => {
     );
   });
 });
+
+// Added at FRONT-37, through the whole tree.
+//
+// THE CONFIRMATION IS IN THE PAGE, NOT IN window.confirm. Two reasons: a
+// native dialog needs a global to be stubbed before it can be tested, and
+// above all it cannot say HOW MANY cards are about to be lost without that
+// sentence being written by hand anyway. The criterion asks for a
+// confirmation that announces the cascade explicitly, so the count is shown.
+
+/** The column section, by its accessible name. */
+function column(title: string): HTMLElement {
+  return screen.getByRole('region', { name: title });
+}
+
+describe('renommer une colonne', () => {
+  it('affiche le titre rendu par le serveur', async () => {
+    await mountSeeded(createMemoryStorage(seeded));
+    const target = column('A faire');
+
+    fireEvent.click(within(target).getByRole('button', { name: /renommer/i }));
+    fireEvent.change(within(target).getByLabelText(/titre de la colonne/i), {
+      target: { value: 'Titre corrige' },
+    });
+    fireEvent.click(
+      within(target).getByRole('button', { name: /enregistrer le titre/i }),
+    );
+
+    await waitFor(() => expect(columnTitles()).toContain('Titre corrige'));
+  });
+
+  it("Annuler referme sans rien changer", async () => {
+    await mountSeeded(createMemoryStorage(seeded));
+    const target = column('A faire');
+
+    fireEvent.click(within(target).getByRole('button', { name: /renommer/i }));
+    fireEvent.change(within(target).getByLabelText(/titre de la colonne/i), {
+      target: { value: 'Jamais enregistre' },
+    });
+    fireEvent.click(within(target).getByRole('button', { name: /annuler/i }));
+
+    expect(columnTitles()).toEqual(['A faire', 'En cours']);
+  });
+});
+
+describe('supprimer une colonne', () => {
+  it('demande confirmation et ne supprime rien avant', async () => {
+    await mountSeeded(createMemoryStorage(seeded));
+    const target = column('A faire');
+
+    fireEvent.click(
+      within(target).getByRole('button', { name: /supprimer la colonne/i }),
+    );
+
+    expect(columnTitles()).toEqual(['A faire', 'En cours']);
+  });
+
+  it('la confirmation annonce COMBIEN de taches partiront', async () => {
+    // "A faire" holds two cards in the seed. A confirmation that does not
+    // say so would let a user delete them without knowing.
+    await mountSeeded(createMemoryStorage(seeded));
+    const target = column('A faire');
+
+    fireEvent.click(
+      within(target).getByRole('button', { name: /supprimer la colonne/i }),
+    );
+
+    expect(within(target).getByRole('alert').textContent).toMatch(/2/);
+  });
+
+  it('confirmer supprime la colonne ET ses cartes', async () => {
+    await mountSeeded(createMemoryStorage(seeded));
+    const target = column('A faire');
+
+    fireEvent.click(
+      within(target).getByRole('button', { name: /supprimer la colonne/i }),
+    );
+    fireEvent.click(within(target).getByRole('button', { name: /confirmer/i }));
+
+    await waitFor(() => expect(columnTitles()).toEqual(['En cours']));
+    expect(screen.queryByText('Premiere carte')).toBeNull();
+  });
+
+  it('renoncer a la confirmation ne supprime rien', async () => {
+    await mountSeeded(createMemoryStorage(seeded));
+    const target = column('A faire');
+
+    fireEvent.click(
+      within(target).getByRole('button', { name: /supprimer la colonne/i }),
+    );
+    fireEvent.click(within(target).getByRole('button', { name: /renoncer/i }));
+
+    expect(columnTitles()).toEqual(['A faire', 'En cours']);
+    expect(within(column('A faire')).queryByRole('alert')).toBeNull();
+  });
+});
+
+// Added at FRONT-38, through the whole tree.
+describe('deplacer une tache', () => {
+  it('la fait apparaitre dans la colonne cible et disparaitre de la sienne', async () => {
+    await mountSeeded(createMemoryStorage(seeded));
+    const article = screen
+      .getByRole('heading', { level: 4, name: 'Premiere carte' })
+      .closest('article') as HTMLElement;
+
+    fireEvent.click(within(article).getByRole('button', { name: /modifier/i }));
+    fireEvent.change(within(article).getByLabelText(/^Colonne$/), {
+      target: { value: 'list-b' },
+    });
+    fireEvent.click(
+      within(article).getByRole('button', { name: /enregistrer/i }),
+    );
+
+    await waitFor(() =>
+      expect(
+        within(column('En cours')).getByText('Premiere carte'),
+      ).toBeTruthy(),
+    );
+    expect(within(column('A faire')).queryByText('Premiere carte')).toBeNull();
+  });
+});

@@ -103,7 +103,7 @@ describe('les mutations, qui passent par les operations pures du domaine', () =>
   it('insere la colonne rendue par le serveur', () => {
     const other: List = { id: 'list-2', title: 'En cours', position: 1 };
 
-    const next = boardReducer(readyState(), { type: 'listAdded', list: other });
+    const next = boardReducer(readyState(), { type: 'listSaved', list: other });
 
     expect(next.board.lists).toHaveLength(2);
     expect(next.pending).toBe(false);
@@ -156,5 +156,41 @@ describe('une action qui echoue', () => {
     expect(failed.error).toBe('Cette ressource ne vous appartient pas.');
     expect(failed.pending).toBe(false);
     expect(failed.status).toBe('ready');
+  });
+});
+
+// Added at FRONT-37.
+describe('renommer et supprimer une colonne', () => {
+  it('listSaved REMPLACE une colonne existante sans en ajouter', () => {
+    // Same action as the insertion, because withList is an upsert. That is
+    // ADR-019 paying a second time: renaming and adding are the same
+    // operation seen from the reducer, exactly as cardSaved covers adding
+    // and modifying a card.
+    const renamed: List = { ...list, title: 'Titre corrige' };
+
+    const next = boardReducer(readyState(), { type: 'listSaved', list: renamed });
+
+    expect(next.board.lists).toHaveLength(1);
+    expect(next.board.lists[0]?.title).toBe('Titre corrige');
+  });
+
+  it('listDeleted retire la colonne ET ses cartes', () => {
+    const next = boardReducer(readyState(), {
+      type: 'listDeleted',
+      listId: 'list-1',
+    });
+
+    expect(next.board.lists).toHaveLength(0);
+    expect(next.board.cards).toHaveLength(0);
+  });
+
+  it('listDeleted termine l\'action et efface le message', () => {
+    const started = boardReducer(readyState(), { type: 'actionStarted' });
+
+    const next = boardReducer(started, { type: 'listDeleted', listId: 'list-1' });
+
+    expect(next.pending).toBe(false);
+    expect(next.error).toBeNull();
+    expect(next.status).toBe('ready');
   });
 });

@@ -8,20 +8,33 @@
 // without a card has to stay visible and usable, which is a criterion of
 // FRONT-11 and the only way to add the first task to it at pass B.
 
-import type { Card as CardData, CardPatch, List } from '../domain/types.ts';
+import { useState } from 'react';
+
+import type {
+  Card as CardData,
+  CardPatch,
+  List,
+  ListPatch,
+} from '../domain/types.ts';
 import { Card } from './Card.tsx';
+import { ColumnEditor } from './ColumnEditor.tsx';
 import { TitleForm } from './TitleForm.tsx';
 
 export function Column({
   list,
   cards,
+  lists,
   pending,
   onAddCard,
   onUpdateCard,
   onDeleteCard,
+  onUpdateList,
+  onDeleteList,
 }: {
   list: List;
   cards: readonly CardData[];
+  /** Every column, passed through to the card editor for the move. */
+  lists: readonly List[];
   pending: boolean;
   /**
    * Already bound to this column by Board, so the identifier is sourced in
@@ -35,12 +48,99 @@ export function Column({
    */
   onUpdateCard: (cardId: string, patch: CardPatch) => Promise<boolean>;
   onDeleteCard: (cardId: string) => Promise<boolean>;
+  /** Already bound to this column by Board, like onAddCard. */
+  onUpdateList: (patch: ListPatch) => Promise<boolean>;
+  onDeleteList: () => Promise<boolean>;
 }): React.ReactElement {
+  const [renaming, setRenaming] = useState(false);
+  const [confirming, setConfirming] = useState(false);
+
+  async function handleRename(patch: ListPatch): Promise<boolean> {
+    const saved = await onUpdateList(patch);
+
+    // Closed only on success, like CardEditor: a failed rename must not
+    // throw away what the user typed.
+    if (saved) {
+      setRenaming(false);
+    }
+
+    return saved;
+  }
+
+  // THE CONFIRMATION SAYS WHAT WILL BE LOST. Card.list carries
+  // onDelete: Cascade in the database, so deleting a column deletes its
+  // cards, and a confirmation that did not say so would let a user destroy
+  // them without knowing. window.confirm could not have carried the count
+  // without that sentence being written by hand anyway, and it would have
+  // needed a global to be stubbed before it could be tested.
+  const warning =
+    cards.length === 0
+      ? `Supprimer « ${list.title} » ? Cette colonne est vide.`
+      : cards.length === 1
+        ? `Supprimer « ${list.title} » et la tâche qu'elle contient ? Cette suppression est définitive.`
+        : `Supprimer « ${list.title} » et ses ${cards.length} tâches ? Cette suppression est définitive.`;
   return (
     // aria-label makes this a named region, so assistive technology and the
     // tests can both say "the A faire column" rather than "the second div".
     <section aria-label={list.title}>
-      <h3>{list.title}</h3>
+      {renaming ? (
+        <ColumnEditor
+          list={list}
+          pending={pending}
+          onSave={handleRename}
+          onCancel={() => setRenaming(false)}
+        />
+      ) : (
+        <>
+          <h3>{list.title}</h3>
+
+          <p>
+            <button
+              type="button"
+              disabled={pending}
+              onClick={() => setRenaming(true)}
+            >
+              Renommer
+            </button>
+
+            {confirming ? (
+              <>
+                <button
+                  type="button"
+                  disabled={pending}
+                  onClick={() => void onDeleteList()}
+                >
+                  Confirmer
+                </button>
+                <button
+                  type="button"
+                  disabled={pending}
+                  onClick={() => setConfirming(false)}
+                >
+                  Renoncer
+                </button>
+              </>
+            ) : (
+              // The label reads "Supprimer", but the ACCESSIBLE NAME says
+              // which Supprimer this is. Without it, a column would expose
+              // several identical "Supprimer" buttons, its own and one per
+              // card, and a screen reader user would have no way to tell
+              // them apart. aria-label fixes that and keeps the visible
+              // text short.
+              <button
+                type="button"
+                aria-label="Supprimer la colonne"
+                disabled={pending}
+                onClick={() => setConfirming(true)}
+              >
+                Supprimer
+              </button>
+            )}
+          </p>
+
+          {confirming && <p role="alert">{warning}</p>}
+        </>
+      )}
 
       {cards.length === 0 ? (
         <p>Aucune tâche dans cette colonne.</p>
@@ -59,6 +159,7 @@ export function Column({
             <li key={card.id}>
               <Card
                 card={card}
+                lists={lists}
                 pending={pending}
                 onUpdate={(patch) => onUpdateCard(card.id, patch)}
                 onDelete={() => onDeleteCard(card.id)}
