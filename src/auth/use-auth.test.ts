@@ -88,10 +88,10 @@ describe('la connexion', () => {
     const { result } = mount(tokens, login);
 
     await act(async () => {
-      await result.current.signIn('user1@example.com', 'motdepasse123');
+      await result.current.signIn('user1@example.com', 'un-mot-de-passe');
     });
 
-    expect(login).toHaveBeenCalledWith('user1@example.com', 'motdepasse123');
+    expect(login).toHaveBeenCalledWith('user1@example.com', 'un-mot-de-passe');
     expect(tokens.value).toBe('jeton.frais');
     expect(result.current.status).toBe('authenticated');
   });
@@ -120,7 +120,7 @@ describe('la connexion', () => {
     const { result } = mount(tokens, vi.fn().mockResolvedValue('jeton.frais'));
 
     await act(async () => {
-      await result.current.signIn('user1@example.com', 'motdepasse123');
+      await result.current.signIn('user1@example.com', 'un-mot-de-passe');
     });
 
     expect(result.current.status).toBe('anonymous');
@@ -141,7 +141,7 @@ describe('la connexion', () => {
     const { result } = mount(fakeTokens(null), login);
 
     act(() => {
-      void result.current.signIn('user1@example.com', 'motdepasse123');
+      void result.current.signIn('user1@example.com', 'un-mot-de-passe');
     });
     expect(result.current.pending).toBe(true);
 
@@ -162,7 +162,7 @@ describe('la connexion', () => {
       await result.current.signIn('user1@example.com', 'faux');
     });
     await act(async () => {
-      await result.current.signIn('user1@example.com', 'motdepasse123');
+      await result.current.signIn('user1@example.com', 'un-mot-de-passe');
     });
 
     expect(result.current.error).toBeNull();

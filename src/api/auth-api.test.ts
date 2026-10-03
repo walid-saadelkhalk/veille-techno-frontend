@@ -23,11 +23,11 @@ describe('createAuthApi.login', () => {
     const post = vi.fn().mockResolvedValue({ accessToken: 'un.jeton' });
     const api = createAuthApi(clientWith(post));
 
-    await api.login('user1@example.com', 'motdepasse123');
+    await api.login('user1@example.com', 'un-mot-de-passe');
 
     expect(post).toHaveBeenCalledWith('/auth/login', {
       email: 'user1@example.com',
-      password: 'motdepasse123',
+      password: 'un-mot-de-passe',
     });
   });
 
@@ -36,7 +36,7 @@ describe('createAuthApi.login', () => {
       clientWith(vi.fn().mockResolvedValue({ accessToken: 'un.jeton' })),
     );
 
-    await expect(api.login('user1@example.com', 'motdepasse123')).resolves.toBe(
+    await expect(api.login('user1@example.com', 'un-mot-de-passe')).resolves.toBe(
       'un.jeton',
     );
   });
