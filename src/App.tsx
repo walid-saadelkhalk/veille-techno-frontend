@@ -42,7 +42,11 @@ export default function App({
         )}
       </header>
 
-      {auth.status === 'anonymous' ? <LoginForm auth={auth} /> : <Board />}
+      {auth.status === 'anonymous' ? (
+        <LoginForm auth={auth} />
+      ) : (
+        <Board storage={services.boardStorage} />
+      )}
     </main>
   );
 }

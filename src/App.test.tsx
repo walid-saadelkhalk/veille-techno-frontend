@@ -10,7 +10,7 @@
 // network, no server and no database, which is the demonstration ADR-004 was
 // written for.
 
-import { cleanup, render, screen } from '@testing-library/react';
+import { act, cleanup, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import App from './App.tsx';
@@ -54,17 +54,22 @@ describe('App', () => {
     expect(screen.getByLabelText(/email/i)).toBeTruthy();
   });
 
-  it('affiche le tableau quand un jeton est deja range', () => {
+  it('affiche le tableau quand un jeton est deja range', async () => {
     render(<App services={servicesWith('un.jeton.deja.la')} />);
+    // Since FRONT-11 the board loads asynchronously, so the load is flushed
+    // here to keep its state update inside act. The heading itself is
+    // rendered in all three screens, so it does not wait for the data.
+    await act(async () => {});
 
     expect(screen.getByRole('heading', { name: /tableau/i })).toBeTruthy();
     expect(screen.queryByLabelText(/email/i)).toBeNull();
   });
 
-  it('offre un moyen de se deconnecter', () => {
+  it('offre un moyen de se deconnecter', async () => {
     // Without a button, the logout delivered at FRONT-31 cannot be observed,
     // and neither can the criterion that says the board must not come back.
     render(<App services={servicesWith('un.jeton.deja.la')} />);
+    await act(async () => {});
 
     expect(
       // Accented, because the button says it to a user. The rest of this

@@ -1,15 +1,94 @@
-// The board, empty skeleton. The real one is lot 5, FRONT-11 to FRONT-15,
-// on top of the use-board hook of FRONT-10.
+// The board, and the three screens a network imposes where a local storage
+// would have asked for one.
 //
-// It exists now so that the conditional render has two real branches and the
-// switch after a login can be seen. It deliberately shows nothing it cannot
-// do: an empty state says so, rather than pretending to be a board.
+// THE THREE SCREENS ARE THE POINT OF THIS COMPONENT:
+//
+//   loading            -> it says so
+//   error              -> the message AND a way to retry, never a blank page
+//   ready, no column   -> an empty state that says something useful
+//   ready, with error  -> the board PLUS a banner, because a refused action
+//                         must not take the board off the screen
+//
+// The last line is what ruled out a discriminated union for the state at
+// FRONT-10. And the criterion "it must not say there are no columns while
+// loading" is satisfied BY THE STRUCTURE here: the empty state is only
+// reachable inside the ready branch, so writing it in the wrong place would
+// have to be deliberate.
 
-export function Board(): React.ReactElement {
+import { cardsOfList, sortedLists } from '../domain/operations.ts';
+import { useBoard } from '../hooks/use-board.ts';
+import type { BoardStorage } from '../storage/storage.ts';
+import { Column } from './Column.tsx';
+
+export function Board({
+  storage,
+}: {
+  storage: BoardStorage;
+}): React.ReactElement {
+  const view = useBoard(storage);
+
+  // Branches in the function body, before the return, rather than nested
+  // ternaries inside the JSX. The kick-off slide 15 claims React forbids
+  // "else if"; it forbids statements INSIDE JSX, which is not the same
+  // thing, and three branches read better this way.
+  let content: React.ReactElement;
+
+  if (view.status === 'loading') {
+    content = <p>Chargement du tableau...</p>;
+  } else if (view.status === 'error') {
+    content = (
+      <>
+        <p role="alert">{view.error}</p>
+        {/* reload() has been exposed by the hook since FRONT-10. Staying here
+            with a way out is deliberate: a dead server does not mean a dead
+            session, and sending the user to the login screen would offer a
+            form that needs the very server that is down. */}
+        <button type="button" onClick={view.reload}>
+          Réessayer
+        </button>
+      </>
+    );
+  } else {
+    // sortedLists and cardsOfList are PURE FUNCTIONS of src/domain, written
+    // and tested at lot 1. A component calling a pure function does not
+    // compute, it delegates. This is the cost accepted by the flat shape of
+    // ADR-007: the display filters instead of reading list.cards, and in
+    // exchange the ordering is tested outside React, where sort() cannot
+    // mutate the state.
+    //
+    // No useMemo. Filtering a few dozen cards per render costs nothing, and
+    // an unmeasured optimisation is superstition. Lot 7 has the tools if it
+    // ever needs measuring.
+    const lists = sortedLists(view.board);
+
+    content = (
+      <>
+        {/* An action that failed: the board stays, the message is added. */}
+        {view.error !== null && <p role="alert">{view.error}</p>}
+
+        {lists.length === 0 ? (
+          <p>Aucune colonne pour l'instant. Ajoutez-en une pour commencer.</p>
+        ) : (
+          <div>
+            {lists.map((list) => (
+              <Column
+                key={list.id}
+                list={list}
+                cards={cardsOfList(view.board, list.id)}
+              />
+            ))}
+          </div>
+        )}
+      </>
+    );
+  }
+
+  // The heading sits OUTSIDE the branches, so it does not flicker between
+  // the loading screen and the board.
   return (
-    <section>
+    <section aria-label="Tableau">
       <h2>Tableau</h2>
-      <p>Aucune colonne pour l'instant. Le tableau arrive au lot 4.</p>
+      {content}
     </section>
   );
 }
