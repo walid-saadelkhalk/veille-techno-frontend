@@ -265,3 +265,131 @@ describe('ajouter une tache', () => {
     );
   });
 });
+
+// Added at pass C, FRONT-14 and FRONT-15.
+//
+// THE TRIPLET IS THE WHOLE POINT. Deleting the first, the last and the only
+// card is what catches a React key bug: with an index as key, removing the
+// first of three makes the old second land at index 0, React believes it is
+// the same item with new content and reuses its internal state. Deleting the
+// LAST shifts nothing, so the bug is invisible on that scenario, which is
+// exactly why one deletion test would not be enough.
+
+/** Three cards in one column, in the order they must be shown. */
+const threeCards: BoardData = {
+  lists: [{ id: 'list-a', title: 'A faire', position: 0 }],
+  cards: [
+    { id: 'card-1', title: 'Premiere', description: '', position: 0, listId: 'list-a' },
+    { id: 'card-2', title: 'Deuxieme', description: '', position: 1, listId: 'list-a' },
+    { id: 'card-3', title: 'Troisieme', description: '', position: 2, listId: 'list-a' },
+  ],
+};
+
+/** The card titles of the only column, in document order. */
+function cardTitles(): readonly string[] {
+  return screen
+    .getAllByRole('heading', { level: 4 })
+    .map((heading) => heading.textContent ?? '');
+}
+
+async function mountOneColumn(storage: BoardStorage): Promise<void> {
+  render(<Board storage={storage} />);
+  await waitFor(() => expect(columnTitles()).toEqual(['A faire']));
+}
+
+/** Clicks the delete button OF THAT CARD, found through its own heading. */
+function clickDelete(title: string): void {
+  const article = screen
+    .getByRole('heading', { level: 4, name: title })
+    .closest('article');
+
+  fireEvent.click(
+    within(article as HTMLElement).getByRole('button', { name: /supprimer/i }),
+  );
+}
+
+describe('supprimer une tache, le triplet', () => {
+  it('supprimer la PREMIERE laisse les deux autres avec le bon contenu', async () => {
+    await mountOneColumn(createMemoryStorage(threeCards));
+
+    clickDelete('Premiere');
+
+    await waitFor(() => expect(cardTitles()).toEqual(['Deuxieme', 'Troisieme']));
+  });
+
+  it('supprimer la DERNIERE laisse les deux autres intactes', async () => {
+    await mountOneColumn(createMemoryStorage(threeCards));
+
+    clickDelete('Troisieme');
+
+    await waitFor(() => expect(cardTitles()).toEqual(['Premiere', 'Deuxieme']));
+  });
+
+  it('supprimer CELLE DU MILIEU laisse un trou de position et l\'ordre juste', async () => {
+    // Positions become 0 and 2. Nothing reindexes, by design, and the
+    // display sorts on position, so the order stays right. See ADR-011.
+    await mountOneColumn(createMemoryStorage(threeCards));
+
+    clickDelete('Deuxieme');
+
+    await waitFor(() => expect(cardTitles()).toEqual(['Premiere', 'Troisieme']));
+  });
+
+  it('supprimer la SEULE rend la colonne vide et utilisable', async () => {
+    await mountOneColumn(
+      createMemoryStorage({
+        lists: threeCards.lists,
+        cards: [threeCards.cards[0]!],
+      }),
+    );
+
+    clickDelete('Premiere');
+
+    await waitFor(() =>
+      expect(screen.getByText(/aucune tâche/i)).toBeTruthy(),
+    );
+    expect(screen.getByLabelText(/nouvelle tâche/i)).toBeTruthy();
+  });
+});
+
+describe('les echecs des actions sur une carte', () => {
+  it('LAISSE la carte affichee quand la suppression echoue', async () => {
+    // "Ce qui s'affiche est ce qui est enregistre": showing a deletion that
+    // did not happen would be worse than showing an error.
+    await mountOneColumn({
+      ...createMemoryStorage(threeCards),
+      deleteCard: () =>
+        Promise.reject(new ApiError('network', ['Le serveur est injoignable.'])),
+    });
+
+    clickDelete('Premiere');
+
+    await waitFor(() =>
+      expect(screen.getByRole('alert').textContent).toContain(
+        'Le serveur est injoignable.',
+      ),
+    );
+    expect(cardTitles()).toEqual(['Premiere', 'Deuxieme', 'Troisieme']);
+  });
+});
+
+describe('modifier une tache depuis le tableau', () => {
+  it('affiche le titre rendu par le serveur', async () => {
+    await mountOneColumn(createMemoryStorage(threeCards));
+    const article = screen
+      .getByRole('heading', { level: 4, name: 'Premiere' })
+      .closest('article') as HTMLElement;
+
+    fireEvent.click(within(article).getByRole('button', { name: /modifier/i }));
+    fireEvent.change(within(article).getByLabelText(/titre/i), {
+      target: { value: 'Titre corrige' },
+    });
+    fireEvent.click(
+      within(article).getByRole('button', { name: /enregistrer/i }),
+    );
+
+    await waitFor(() =>
+      expect(cardTitles()).toEqual(['Titre corrige', 'Deuxieme', 'Troisieme']),
+    );
+  });
+});

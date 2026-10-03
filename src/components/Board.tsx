@@ -89,6 +89,8 @@ export function Board({
                 // Bound here, so the parent column of a new card is read in
                 // one place only.
                 onAddCard={(title) => view.addCard(list.id, title)}
+                onUpdateCard={view.updateCard}
+                onDeleteCard={view.deleteCard}
               />
             ))}
           </div>

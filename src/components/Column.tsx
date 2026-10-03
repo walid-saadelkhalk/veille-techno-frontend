@@ -8,7 +8,7 @@
 // without a card has to stay visible and usable, which is a criterion of
 // FRONT-11 and the only way to add the first task to it at pass B.
 
-import type { Card as CardData, List } from '../domain/types.ts';
+import type { Card as CardData, CardPatch, List } from '../domain/types.ts';
 import { Card } from './Card.tsx';
 import { TitleForm } from './TitleForm.tsx';
 
@@ -17,6 +17,8 @@ export function Column({
   cards,
   pending,
   onAddCard,
+  onUpdateCard,
+  onDeleteCard,
 }: {
   list: List;
   cards: readonly CardData[];
@@ -26,6 +28,13 @@ export function Column({
    * ONE place. A column that had to pass its own id could pass another's.
    */
   onAddCard: (title: string) => Promise<boolean>;
+  /**
+   * Taken unbound, because THIS component is the one mapping over the cards,
+   * so it is the one that can source a card identifier. Same rule as Board
+   * binding the list identifier for onAddCard.
+   */
+  onUpdateCard: (cardId: string, patch: CardPatch) => Promise<boolean>;
+  onDeleteCard: (cardId: string) => Promise<boolean>;
 }): React.ReactElement {
   return (
     // aria-label makes this a named region, so assistive technology and the
@@ -48,7 +57,12 @@ export function Column({
             // And that bug shows up on NO other scenario, since deleting the
             // last card shifts nothing. Hence the triplet of FRONT-15.
             <li key={card.id}>
-              <Card card={card} />
+              <Card
+                card={card}
+                pending={pending}
+                onUpdate={(patch) => onUpdateCard(card.id, patch)}
+                onDelete={() => onDeleteCard(card.id)}
+              />
             </li>
           ))}
         </ul>
